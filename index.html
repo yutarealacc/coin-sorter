@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Coin Sorter AI</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: linear-gradient(135deg, #e0e7ff, #f8fafc);
+            color: #1e293b;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #111827;
+            color: white;
+            text-align: center;
+            padding: 35px 20px;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 42px;
+        }
+
+        header p {
+            margin-top: 10px;
+            color: #cbd5e1;
+            font-size: 18px;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 950px;
+            margin: 35px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            margin-bottom: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+            text-align: center;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 27px;
+        }
+
+        button,
+        .upload-button {
+            display: inline-block;
+            background: #111827;
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            margin: 8px;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover,
+        .upload-button:hover {
+            transform: translateY(-2px);
+            background: #374151;
+        }
+
+        #image-upload {
+            display: none;
+        }
+
+        #webcam-container {
+            margin-top: 20px;
+        }
+
+        #webcam-container canvas {
+            border-radius: 15px;
+            max-width: 100%;
+        }
+
+        #image-preview {
+            display: none;
+            max-width: 350px;
+            max-height: 350px;
+            margin: 25px auto;
+            border-radius: 15px;
+        }
+
+        #main-result {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 20px;
+        }
+
+        .prediction {
+            max-width: 500px;
+            margin: 10px auto;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            font-size: 18px;
+        }
+
+        .info {
+            color: #64748b;
+            font-size: 15px;
+            margin-top: 20px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+
+<body>
+
+    <header>
+        <h1>🪙 Coin Sorter AI</h1>
+        <p>Use Artificial Intelligence to identify coins</p>
+    </header>
+
+
+    <div class="container">
+
+
+        <!-- CAMERA -->
+
+        <div class="card">
+
+            <h2>📷 Camera Scanner</h2>
+
+            <p>
+                Use your webcam to let the AI identify a coin.
+            </p>
+
+            <button onclick="startCamera()">
+                Start Camera
+            </button>
+
+            <div id="webcam-container"></div>
+
+        </div>
+
+
+        <!-- IMAGE UPLOAD -->
+
+        <div class="card">
+
+            <h2>🖼️ Upload an Image</h2>
+
+            <p>
+                Choose a picture of a coin from your computer.
+            </p>
+
+            <label for="image-upload" class="upload-button">
+                📁 Choose Image
+            </label>
+
+            <input
+                type="file"
+                id="image-upload"
+                accept="image/*"
+            >
+
+            <img
+                id="image-preview"
+                alt="Uploaded coin"
+            >
+
+        </div>
+
+
+        <!-- PREDICTION -->
+
+        <div class="card">
+
+            <h2>🤖 AI Prediction</h2>
+
+            <div id="main-result">
+                Waiting for an image...
+            </div>
+
+            <div id="label-container"></div>
+
+            <p class="info">
+                The prediction is generated using a Teachable Machine
+                image classification model.
+            </p>
+
+        </div>
+
+
+    </div>
+
+
+    <footer>
+        Coin Sorter AI • Teachable Machine Project
+    </footer>
+
+
+
+    <!-- TensorFlow.js -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+
+
+    <!-- Teachable Machine -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+
+
+    <script>
+
+        // YOUR MODEL FOLDER
+
+        const MODEL_URL = "./my_model/";
+
+
+        let model;
+        let webcam;
+        let maxPredictions;
+
+
+        // --------------------------------
+        // LOAD MODEL
+        // --------------------------------
+
+        async function loadModel() {
+
+            const modelURL =
+                MODEL_URL + "model.json";
+
+            const metadataURL =
+                MODEL_URL + "metadata.json";
+
+            model = await tmImage.load(
+                modelURL,
+                metadataURL
+            );
+
+            maxPredictions =
+                model.getTotalClasses();
+
+            console.log("AI model loaded!");
+
+        }
+
+
+
+        // --------------------------------
+        // START CAMERA
+        // --------------------------------
+
+        async function startCamera() {
+
+            try {
+
+                if (!model) {
+                    await loadModel();
+                }
+
+
+                const flip = true;
+
+
+                webcam =
+                    new tmImage.Webcam(
+                        350,
+                        350,
+                        flip
+                    );
+
+
+                await webcam.setup();
+
+                await webcam.play();
+
+
+                document
+                    .getElementById(
+                        "webcam-container"
+                    )
+                    .innerHTML = "";
+
+
+                document
+                    .getElementById(
+                        "webcam-container"
+                    )
+                    .appendChild(
+                        webcam.canvas
+                    );
+
+
+                window.requestAnimationFrame(
+                    webcamLoop
+                );
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "Could not access the camera. Please allow camera permission."
+                );
+
+            }
+
+        }
+
+
+
+        // --------------------------------
+        // CAMERA LOOP
+        // --------------------------------
+
+        async function webcamLoop() {
+
+            webcam.update();
+
+            await predict(
+                webcam.canvas
+            );
+
+            window.requestAnimationFrame(
+                webcamLoop
+            );
+
+        }
+
+
+
+        // --------------------------------
+        // IMAGE UPLOAD
+        // --------------------------------
+
+        document
+            .getElementById("image-upload")
+            .addEventListener(
+                "change",
+                handleImageUpload
+            );
+
+
+        async function handleImageUpload(event) {
+
+            try {
+
+                if (!model) {
+                    await loadModel();
+                }
+
+
+                const file =
+                    event.target.files[0];
+
+
+                if (!file) {
+                    return;
+                }
+
+
+                const image =
+                    document.getElementById(
+                        "image-preview"
+                    );
+
+
+                image.src =
+                    URL.createObjectURL(file);
+
+
+                image.style.display =
+                    "block";
+
+
+                image.onload = async function () {
+
+                    await predict(image);
+
+                };
+
+            }
+
+            catch (error) {
+
+                console.error(error);
+
+                alert(
+                    "There was a problem loading the image."
+                );
+
+            }
+
+        }
+
+
+
+        // --------------------------------
+        // PREDICT
+        // --------------------------------
+
+        async function predict(image) {
+
+            const prediction =
+                await model.predict(image);
+
+
+            const labelContainer =
+                document.getElementById(
+                    "label-container"
+                );
+
+
+            labelContainer.innerHTML = "";
+
+
+            let highest =
+                prediction[0];
+
+
+            for (
+                let i = 0;
+                i < prediction.length;
+                i++
+            ) {
+
+
+                if (
+                    prediction[i].probability >
+                    highest.probability
+                ) {
+
+                    highest =
+                        prediction[i];
+
+                }
+
+
+                const percentage =
+                    (
+                        prediction[i].probability
+                        * 100
+                    ).toFixed(1);
+
+
+                const result =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                result.className =
+                    "prediction";
+
+
+                result.innerHTML =
+                    prediction[i].className
+                    + ": "
+                    + percentage
+                    + "%";
+
+
+                labelContainer.appendChild(
+                    result
+                );
+
+            }
+
+
+
+            // SHOW MAIN RESULT
+
+            document.getElementById(
+                "main-result"
+            ).innerHTML =
+
+                "🪙 "
+                + highest.className
+                + " — "
+                + (
+                    highest.probability
+                    * 100
+                ).toFixed(1)
+                + "%";
+
+        }
+
+    </script>
+
+</body>
+
+</html>
